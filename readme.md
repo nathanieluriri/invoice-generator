@@ -1,4 +1,4 @@
-````markdown
+
 # 🚀 FastAPI Invoice Generator API
 
 A powerful and simple API built with FastAPI to generate professional PDF invoices from JSON data. It's designed for easy integration into any application needing dynamic invoicing capabilities.
@@ -75,9 +75,9 @@ A powerful and simple API built with FastAPI to generate professional PDF invoic
 ├── editor.html
 └── invoice\_template.html
 
-```
+````
 
----
+
 
 ## 🔌 API Endpoints
 
@@ -99,11 +99,7 @@ Here are the primary endpoints for the service:
 
 ---
 
-## 🤝 Contributing
 
-Pull requests are welcome! For major changes, please open an issue first to discuss what you would like to change.
-
----
 
 ## 📄 License
 
