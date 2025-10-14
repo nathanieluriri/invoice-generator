@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ brand_name }} Invoice</title>
+</head>
+<body style="font-family: Arial, sans-serif; font-size: 11pt; margin: 0; padding: 0;">
+
+    <div style="max-width: 800px; margin: 20px auto; border: 1px solid #ccc; padding: 20px;">
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+                <td style="width: 70%; vertical-align: top;">
+                    <img src="{{ brand_logo_url }}" alt="{{ brand_name }} Logo" style="width: fit-content;  height: 100px; float: left; margin-right: 15px;">
+                    <div style="display: inline-block;">
+                        <h1 style="color: {{ brand_color }}; margin: 0; font-size: 20pt; letter-spacing: 1px;">{{ brand_name | upper }}</h1>
+                        <p style="margin: 5px 0 0 0; font-size: 10pt;">
+                            <span style="color: {{ accent_color }}; font-weight: bold;">RC: {{ rc_number }}</span><br>
+                            {{ address }}<br>
+                            {{ phone }}<br>
+                            <span style="color: {{ accent_color }}; font-weight: bold;">Email:</span> {{ email }}
+                        </p>
+                    </div>
+                </td>
+                <td style="width: 30%; text-align: right; vertical-align: top;">
+                    <p style="margin: 0; font-size: 10pt;">
+                        <span style="font-weight: bold; font-size: 12pt;">INVOICE #{{ invoice_number }}</span><br>
+                        DATE: {{ date }}
+                    </p>
+                </td>
+            </tr>
+        </table>
+
+        <div style="height: 20px;"></div>
+
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+                <td style="width: 50%; vertical-align: top;">
+                    <p style="margin: 0; font-weight: bold; font-size: 10pt;">TO:</p>
+                    <p style="margin: 5px 0 0 0; font-size: 12pt; font-weight: bold;">{{ client_name }}</p>
+                </td>
+                <td style="width: 50%; vertical-align: top; text-align: left;">
+                    <p style="margin: 0; font-weight: bold; font-size: 10pt;">PAY TO:</p>
+                    <table style="font-size: 10pt;">
+                        <tr>
+                            <td style="padding: 0 5px 0 0; font-weight: bold;">NAME:</td>
+                            <td style="padding: 0;">{{ payee_name }}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 0 5px 0 0; font-weight: bold;">ACCT:</td>
+                            <td style="padding: 0;">{{ account_number }}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 0 5px 0 0; font-weight: bold;">BANK:</td>
+                            <td style="padding: 0;">{{ bank_name }}</td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+
+        <h2 style="font-size: 14pt; color: #000; text-align: center; margin: 30px 0 20px 0;">
+            {{ invoice_title }}
+        </h2>
+
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid #000;">
+            <thead>
+                <tr style="background-color: #f2f2f2; font-weight: bold; text-align: left;">
+                    <th style="border: 1px solid #000; padding: 8px; width: 10%;">QUANTITY</th>
+                    <th style="border: 1px solid #000; padding: 8px; width: 45%;">DESCRIPTION</th>
+                    <th style="border: 1px solid #000; padding: 8px; width: 20%; text-align: right;">UNIT PRICE</th>
+                    <th style="border: 1px solid #000; padding: 8px; width: 25%; text-align: right;">TOTAL</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td style="border: 1px solid #000; padding: 8px;">{{ item.quantity }}</td>
+                    <td style="border: 1px solid #000; padding: 8px;">{{ item.description }}</td>
+                    <td style="border: 1px solid #000; padding: 8px; text-align: right;">₦{{ "{:,.2f}".format(item.unit_price if item.unit_price else 0) }}</td>
+                    <td style="border: 1px solid #000; padding: 8px; text-align: right;">₦{{ "{:,.2f}".format(item.total if item.total else 0) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+            <tr>
+                <td style="width: 60%; vertical-align: top;">
+                    <p style="margin: 0; font-size: 11pt; font-weight: bold; padding-top: 15px;">
+                        {{ total_in_words }}
+                    </p>
+                    <div style="border-bottom: 3px solid #000; margin-top: 15px; width: 90%;"></div>
+                </td>
+                <td style="width: 40%; vertical-align: top; text-align: right;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 11pt;">
+                        <tr>
+                            <td style="padding: 2px 10px; text-align: right; font-weight: bold;">SUBTOTAL</td>
+                            <td style="padding: 2px 10px; text-align: right; border: 1px solid #000;">₦{{ "{:,.2f}".format(subtotal if subtotal else 0) }}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 2px 10px; text-align: right;">{{ vat_rate }}% VAT</td>
+                            <td style="padding: 2px 10px; text-align: right; background-color: #ffe0e0; border: 1px solid #000;">₦{{ "{:,.2f}".format(vat_amount if vat_amount else 0) }}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 5px 10px; text-align: right; font-weight: bold;">TOTAL DUE</td>
+                            <td style="padding: 5px 10px; text-align: right; font-weight: bold; background-color: #ffe0e0; border: 1px solid #000;">₦{{ "{:,.2f}".format(total_due if total_due else 0) }}</td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+
+        <div style="margin-top: 30px; font-size: 10pt;">
+            <p style="margin: 0; font-weight: bold;">
+                Make all checks payable to {{ payee_name }}
+            </p>
+            <p style="margin-top: 5px;">
+                If you have any questions concerning this invoice, contact <span style="font-weight: bold;">{{ phone }}</span>
+            </p>
+        </div>
+
+        <p style="text-align: center; margin-top: 40px; font-weight: bold; font-size: 12pt;">
+            THANK YOU FOR YOUR BUSINESS!
+        </p>
+
+        <div style="text-align: center; opacity: 0.2; margin-top: -50px; z-index: -1;">
+             <img src="{{ watermark_url }}" alt="{{ brand_name }} Watermark" style="width: fit-content; height: 100px; opacity: 0.8;">
+        </div>
+    </div>
+
+</body>
+</html>

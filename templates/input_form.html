@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Invoice Data Entry</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f4; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1 { color: #000080; }
+        label { display: block; margin-top: 10px; font-weight: bold; }
+        input[type="text"], input[type="number"] { width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        .item-row { display: flex; gap: 10px; margin-bottom: 10px; border: 1px solid #eee; padding: 10px; border-radius: 4px;}
+        .item-row input { margin-top: 0; }
+        .item-row > div { flex-grow: 1; }
+        .item-row label { font-weight: normal; font-size: 0.9em; }
+        .item-row .qty { flex-basis: 15%; }
+        .item-row .desc { flex-basis: 50%; }
+        .item-row .price { flex-basis: 25%; }
+        button { background-color: #FF0000; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; margin-top: 20px; font-size: 1.1em; }
+        button:hover { background-color: #cc0000; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Invoice Details</h1>
+        <form method="POST" action="{{ url_for('view_invoice') }}">
+            
+            <h2>General Details</h2>
+            <div style="display: flex; gap: 20px;">
+                <div style="flex: 1;">
+                    <label for="invoice_number">Invoice Number</label>
+                    <input type="text" id="invoice_number" name="invoice_number" value="{{ defaults.invoice_number }}" required>
+                </div>
+                <div style="flex: 1;">
+                    <label for="date">Date</label>
+                    <input type="text" id="date" name="date" value="{{ defaults.date }}" required>
+                </div>
+            </div>
+
+            <label for="client_name">Client Name (TO:)</label>
+            <input type="text" id="client_name" name="client_name" value="{{ defaults.client_name }}" required>
+
+            <label for="invoice_title">Invoice Title</label>
+            <input type="text" id="invoice_title" name="invoice_title" value="{{ defaults.invoice_title }}" required>
+
+            <h2>Items & Services</h2>
+            <div id="items-container">
+                {% for i in range(3) %}
+                <div class="item-row">
+                    <div class="qty">
+                        <label>Qty</label>
+                        <input type="number" name="item_quantity_{{ i }}" value="{{ defaults['item_quantity_' ~ i] if 'item_quantity_' ~ i in defaults else '' }}" min="0">
+                    </div>
+                    <div class="desc">
+                        <label>Description</label>
+                        <input type="text" name="item_desc_{{ i }}" value="{{ defaults['item_desc_' ~ i] if 'item_desc_' ~ i in defaults else '' }}">
+                    </div>
+                    <div class="price">
+                        <label>Unit Price (₦)</label>
+                        <input type="number" name="item_price_{{ i }}" value="{{ defaults['item_price_' ~ i] if 'item_price_' ~ i in defaults else '' }}" min="0">
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <button type="submit">Generate Invoice & View</button>
+        </form>
+    </div>
+</body>
+</html>
