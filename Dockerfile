@@ -8,17 +8,23 @@ WORKDIR /app
 # We manually download wkhtmltopdf because it's no longer in the main Debian repos
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
+       # Utilities
        wget \
-       libxrender1 \
-       libfontconfig1 \
-       libxext6 \
        xz-utils \
+       # Dependencies for wkhtmltopdf
+       libxrender1 \
+       libxext6 \
+       fontconfig \
+       libjpeg62-turbo \
+       libssl1.1 \
+       xfonts-75dpi \
+       xfonts-base \
+    # Now download and install the package
     && wget https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-2/wkhtmltox_0.12.6.1-2.bullseye_amd64.deb \
     && dpkg -i wkhtmltox_0.12.6.1-2.bullseye_amd64.deb \
-    && apt-get -f install -y \
+    # Clean up
     && rm wkhtmltox_0.12.6.1-2.bullseye_amd64.deb \
     && rm -rf /var/lib/apt/lists/*
-
 # Copy the requirements file into the container
 COPY requirements.txt .
 
