@@ -104,7 +104,10 @@ async def get_access_tokens_no_date_check(accessToken: str):
         return MockAccessToken("member_user_456", "member")
     return None
 
-storage = RedisStorage("redis://localhost:6379/0")
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+
+# Construct the connection string dynamically.
+storage = RedisStorage(f"redis://{REDIS_HOST}:6379/0")
 limiter = FixedWindowRateLimiter(storage)
 RATE_LIMITS = {
     "annonymous": parse("500/minute"),
