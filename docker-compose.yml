@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  # The Redis message broker for Celery
+  redis:
+    image: "redis:7-alpine"
+    ports:
+      # Exposing the port is optional, but useful for debugging with a local Redis client
+      - "6379:6379"
+
+  # Your FastAPI web application
+  web:
+    build: .
+    command: gunicorn -w 2 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:7861 --timeout 120 main:app
+    ports:
+      - "7861:7861"
+    volumes:
+      # Mounts the current directory into the container for live code reloading.
+      # Great for development.
+      - .:/app
+    env_file:
+      # Loads variables from the .env file
+      - ./.env
+    depends_on:
+      # Ensures Redis is started before the web service attempts to connect
+      - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7860/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # Your Celery background worker
+  worker:
+    build: .
+    command: celery -A main.celery_app worker --loglevel=info --pool=eventlet
+    volumes:
+      - .:/app
+    env_file:
+      - ./.env
+    depends_on:
+      # Ensures Redis is available before the worker starts
+      - redis
