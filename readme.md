@@ -75,7 +75,7 @@ A powerful and simple API built with FastAPI to generate professional PDF invoic
 ├── editor.html
 └── invoice\_template.html
 
-```
+````
 
 
 
