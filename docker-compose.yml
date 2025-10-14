@@ -4,9 +4,7 @@ services:
   # The Redis message broker for Celery
   redis:
     image: "redis:7-alpine"
-    ports:
-      # Exposing the port is optional, but useful for debugging with a local Redis client
-      - "6379:6379"
+    
 
   # Your FastAPI web application
   web:
@@ -18,6 +16,9 @@ services:
       # Mounts the current directory into the container for live code reloading.
       # Great for development.
       - .:/app
+    environment:
+      - WKHTMLTOPDF_PATH=/usr/local/bin/wkhtmltopdf
+      - REDIS_HOST=redis
     env_file:
       # Loads variables from the .env file
       - ./.env
