@@ -10,20 +10,20 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
        # Utilities
        wget \
-       xz-utils \
-       # Dependencies for wkhtmltopdf
+       # Dependencies for wkhtmltopdf on Debian Bookworm/Trixie
        libxrender1 \
        libxext6 \
        fontconfig \
        libjpeg62-turbo \
-       libssl1.1 \
+       libssl3 \
        xfonts-75dpi \
        xfonts-base \
-    # Now download and install the package
-    && wget https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-2/wkhtmltox_0.12.6.1-2.bullseye_amd64.deb \
-    && dpkg -i wkhtmltox_0.12.6.1-2.bullseye_amd64.deb \
+    # Download the correct package
+    && wget https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-3/wkhtmltox_0.12.6.1-3.bookworm_amd64.deb \
+    # Install the package
+    && dpkg -i wkhtmltox_0.12.6.1-3.bookworm_amd64.deb \
     # Clean up
-    && rm wkhtmltox_0.12.6.1-2.bullseye_amd64.deb \
+    && rm wkhtmltox_0.12.6.1-3.bookworm_amd64.deb \
     && rm -rf /var/lib/apt/lists/*
 # Copy the requirements file into the container
 COPY requirements.txt .
