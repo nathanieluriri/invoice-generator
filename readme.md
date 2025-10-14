@@ -1,138 +1,111 @@
-Here's a clean, professional, and informative `README.md` template tailored for your `fasterapi` scaffolding tool and FastAPI CRUD project setup.
-
----
-
-### ✅ `README.md` Template
-
 ````markdown
-# 🚀 FasterAPI Scaffold CLI
+# 🚀 FastAPI Invoice Generator API
 
-FasterAPI is a lightweight scaffolding tool that helps you quickly spin up FastAPI projects with predefined folder structures, schemas, and CRUD repository templates. It's built to save time and enforce consistency.
-
----
-
-## 📦 Features
-
-- Auto-generates a complete FastAPI project structure
-- Creates `schemas/` with `Base`, `Create`, `Update`, and `Out` models
-- Generates CRUD logic in `repository/`
-- CLI-powered — just type and scaffold
+A powerful and simple API built with FastAPI to generate professional PDF invoices from JSON data. It's designed for easy integration into any application needing dynamic invoicing capabilities.
 
 ---
 
-## 🏗️ How the Project Was Created
+## ✨ Features
 
-This project was scaffolded using the `fasterapi` CLI tool:
+-   📄 **Dynamic PDF Generation**: Create clean, professional PDF invoices directly from a JSON payload.
+-   👁️ **Live HTML Preview**: An endpoint to render an HTML preview of the invoice before generating the final PDF.
+-   💰 **Automatic Calculations**: Automatically computes subtotals, VAT, and the total amount due based on the items provided.
+-   ✍️ **Amount-to-Words Conversion**: Converts the final numerical amount into a text representation, specifically tailored for Nigerian Naira (NGN) and Kobo.
+-   🛡️ **Rate Limiting**: Built-in rate limiting using Redis to prevent abuse and ensure service stability for different user types.
+-   🎨 **Customizable Templates**: Uses Jinja2 for HTML templating, making the invoice design easy to modify and brand.
+-   🐳 **Dockerized for Easy Deployment**: Comes with a `Dockerfile` and `docker-compose.yml` for a simple, one-command setup.
 
-```bash
-fasterapi make_project my_project
-cd my_project
-````
+---
 
-To generate schema and repo files:
+## 🛠️ Technology Stack
 
-```bash
-fasterapi make_repo user_profile
-```
+-   **Backend**: Python 3.10, FastAPI
+-   **PDF Generation**: `pdfkit` (a wrapper for `wkhtmltopdf`)
+-   **Rate Limiting & Caching**: Redis
+-   **Web Server**: Gunicorn with Uvicorn workers
+-   **Containerization**: Docker & Docker Compose
 
-This will create:
+---
 
-```
-schemas/user_profile.py
-repository/user_profile.py
-```
+## 🚀 Getting Started
 
-The schema includes:
+### Prerequisites
 
-* `UserProfileBase`
-* `UserProfileCreate` (with `date_created` and `last_updated`)
-* `UserProfileUpdate` (with `last_updated`)
-* `UserProfileOut` (with `_id`, timestamps)
+-   [Docker](https://www.docker.com/get-started)
+-   [Docker Compose](https://docs.docker.com/compose/install/)
+
+### Installation & Running
+
+1.  **Clone the repository:**
+    ```bash
+    git clone <your-repository-url>
+    cd <your-repository-name>
+    ```
+
+2.  **Create an environment file (optional but recommended):**
+    If using the provided `docker-compose.yml` with Celery, create a `.env` file and add the following:
+    ```env
+    CELERY_BROKER_URL=redis://redis:6379/0
+    CELERY_RESULT_BACKEND=redis://redis:6379/1
+    ```
+
+3.  **Build and run the application with Docker Compose:**
+    This single command will build the Docker image, start the FastAPI application, and launch the Redis service.
+    ```bash
+    docker-compose up --build
+    ```
+
+4.  **Access the application:**
+    The API will be running and available at `http://localhost:7860`.
 
 ---
 
 ## 📁 Project Structure
 
-```bash
-my_project/
-├── api/
-│   └── v1/
-|       └──main.py 
-├── core/
-│   └── db.py
-├── repository/
-│   └── 
-├── schemas/
-│   └── 
-├── services/
-│   └── 
-├── security/
-│   └── auth.py
-|   └── encrypting.py
-|   └── hash.py
-|   └── tokens.py
-├── email_templates/
-│   └── new_sign_in.py
-├── main.py
-└── ...
+````
+
+.
+├── docker-compose.yml    \# Defines the services, network, and volumes
+├── Dockerfile            \# Instructions to build the application image
+├── main.py               \# The main FastAPI application code
+├── requirements.txt      \# Python dependencies
+├── static/               \# For serving static files like logos
+│   └── uploads/
+└── templates/            \# Jinja2 HTML templates
+├── editor.html
+└── invoice\_template.html
+
 ```
 
 ---
 
-## 🔧 CLI Usage
+## 🔌 API Endpoints
 
+Here are the primary endpoints for the service:
 
+-   `GET /`
+    -   **Description**: Serves the main HTML page for the invoice editor.
+    -   **Response**: `HTMLResponse`
 
-use it like this:
+-   `POST /render_invoice`
+    -   **Description**: Renders an HTML preview of the invoice. Useful for live updates in a UI.
+    -   **Body**: JSON object containing invoice data.
+    -   **Response**: JSON with the rendered HTML string: `{"html": "..."}`.
 
-```bash
-fasterapi make_project <project_name>
-fasterapi make_repo <schema_name>
-```
-
----
-
-## 💡 Example Commands
-
-```bash
-# Create a new FastAPI project
-fasterapi make_project blog_api
-
-# Generate CRUD files for schema `post`
-fasterapi make_repo post
-```
-
----
-
-
-## 🧪 Requirements
-
-* Python 3.8+
-* FastAPI
-* Pydantic
-* MongoDB (or change the backend)
-
----
-
-## ✅ To-Do
-
-* [ ] Add support for route generation
-* [ ] Add PostgreSQL support
-* [ ] Add unit tests
+-   `POST /generate_pdf`
+    -   **Description**: The main endpoint. Generates the final PDF from the invoice data.
+    -   **Body**: JSON object containing the complete invoice data.
+    -   **Response**: A PDF file (`application/pdf`) as an attachment.
 
 ---
 
 ## 🤝 Contributing
 
-Pull requests are welcome. For major changes, please open an issue first.
+Pull requests are welcome! For major changes, please open an issue first to discuss what you would like to change.
 
 ---
 
 ## 📄 License
 
-MIT License
-
+This project is licensed under the MIT License.
 ```
-
----
-
