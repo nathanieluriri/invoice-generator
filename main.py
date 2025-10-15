@@ -316,7 +316,7 @@ async def render_invoice(data: InvoiceData):
     """Renders invoice data to HTML for live preview."""
     data_dict = data.dict(by_alias=True)
     processed_data = calculate_totals(data_dict)
-    template = templates.get_template('invoice_template.html')
+    template = templates.get_template('invoice_template1.html')
     html = template.render(processed_data)
     return JSONResponse({"html": html})
 
@@ -328,7 +328,7 @@ async def generate_pdf(data: InvoiceData):
     data_dict = data.dict(by_alias=True)
     processed_data = calculate_totals(data_dict)
     
-    template = templates.get_template('invoice_template.html')
+    template = templates.get_template('invoice_template1.html')
     html = template.render(processed_data)
 
     # IMPROVEMENT: Use a temporary file to handle concurrent requests safely.

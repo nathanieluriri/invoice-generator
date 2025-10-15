@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Invoice Builder</title>
+  <title>Enhanced Invoice Builder</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -26,13 +26,40 @@
         -moz-osx-font-smoothing: grayscale;
         transition: all 0.3s ease-in-out;
     }
+    
+    /* Resizable Panes */
+    .resize-handle {
+        flex: 0 0 8px;
+        background-color: #f3f4f6; /* gray-100 */
+        cursor: col-resize;
+        z-index: 10;
+        position: relative;
+        transition: background-color 0.2s ease;
+    }
+    .resize-handle:hover, .resize-handle.is-dragging {
+        background-color: #d1d5db; /* gray-300 */
+    }
+    .resize-handle::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 2px;
+        height: 32px;
+        background-color: #9ca3af; /* gray-400 */
+        border-radius: 2px;
+    }
+
+    /* Styled Scrollbars */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #c7c7c7; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+
     /* Accordion custom styling */
-    details > summary {
-        list-style: none;
-    }
-    details > summary::-webkit-details-marker {
-        display: none;
-    }
+    details > summary { list-style: none; }
+    details > summary::-webkit-details-marker { display: none; }
     details > summary::after {
         content: '＋';
         float: right;
@@ -44,6 +71,7 @@
     details[open] > summary::after {
         transform: rotate(45deg);
     }
+
     /* Custom file input */
     .file-input-wrapper {
         position: relative;
@@ -57,23 +85,22 @@
         top: 0;
         opacity: 0;
         cursor: pointer;
+        width: 100%;
+        height: 100%;
     }
+
     /* Item row editing focus effect */
     #items_table tbody tr.is-editing td.is-focused {
-      background-color: #f1f1f1;
-      transition: all 0.3s ease-in-out;
-      transform: scale(2);  /* makes the cell appear wider */
-      transform-origin: left center;
-      z-index: 20000;
-      position: relative;
+        background-color: #f1f1f1;
+        transition: all 0.3s ease-in-out;
+        transform: scale(1.05);
+        transform-origin: center;
+        z-index: 10;
+        position: relative;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        border-radius: 4px;
     }
-    #items_table tbody tr.is-editing td.is-focused {
-        display: table-cell;
-        width: 100%;
-    }
-    #items_table tbody tr.is-editing td.actions-cell {
-        display: table-cell;
-    }
+
     /* Bespoke input field base style */
     .input-field {
         width: 100%;
@@ -87,31 +114,127 @@
         outline: none;
         border-bottom-color: #000000; /* black */
         box-shadow: none;
-        
     }
+    
+    /* Loader styles */
+    .loader-overlay {
+        position: absolute;
+        inset: 0;
+        background-color: rgba(255, 255, 255, 0.8);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 50;
+        transition: opacity 0.3s ease;
+        opacity: 0;
+        pointer-events: none;
+    }
+    .loader-overlay.active {
+        opacity: 1;
+        pointer-events: auto;
+    }
+    .spinner {
+        width: 48px;
+        height: 48px;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #3498db;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    /* Notification system */
+    #notification-container {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .notification {
+        padding: 12px 16px;
+        border-radius: 8px;
+        color: white;
+        font-weight: 500;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        opacity: 0;
+        transform: translateX(100%);
+        animation: slideIn 0.3s forwards;
+    }
+    .notification.success { background-color: #2ecc71; }
+    .notification.error { background-color: #e74c3c; }
+    .notification.info { background-color: #3498db; }
+    
+    @keyframes slideIn {
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+    @keyframes slideOut {
+        to {
+            opacity: 0;
+            transform: translateX(100%);
+        }
+    }
+
   </style>
 </head>
 
-<body class="bg-neutral-100 text-neutral-800 font-inter">
-  <div class="flex flex-col lg:flex-row h-screen">
-    <div class="w-full lg:w-[620px] bg-white border-r border-neutral-200 flex flex-col">
-      <header class="p-6 border-b border-neutral-200 flex items-center justify-between shrink-0">
+<body class="bg-neutral-100 text-neutral-800 font-inter h-screen overflow-hidden">
+  <div id="app-container" class="flex flex-row h-screen relative">
+    <!-- Editor Pane -->
+    <div id="editor-container" class="w-full lg:w-[620px] bg-white border-r border-neutral-200 flex flex-col flex-shrink-0">
+      <header class="p-4 border-b border-neutral-200 flex items-center justify-between shrink-0">
         <h1 class="text-xl font-bold tracking-tight flex items-center gap-2">Invoice Builder</h1>
-        <span id="save-status" class="text-xs text-neutral-500 font-medium">Saved</span>
+        <div class="flex items-center gap-4">
+            <span id="save-status" class="text-xs text-neutral-500 font-medium">Saved</span>
+            <button id="editor-fullscreen-btn" title="Toggle Editor Fullscreen" class="text-neutral-500 hover:text-black">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+            </button>
+        </div>
       </header>
-
       <div id="editor-panel" class="p-6 overflow-y-auto space-y-6">
+        <!-- All form content goes here -->
         <details open>
             <summary class="text-lg font-semibold cursor-pointer pb-4 border-b">Brand Details</summary>
             <div class="pt-4 space-y-4">
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="text-xs text-neutral-500">Brand Name</label>
-                        <input id="brand_name" class="input-field" type="text" />
+                <div class="flex gap-4 items-center">
+                    <div id="logo-preview-container" class="w-20 h-20 bg-neutral-100 rounded-md flex items-center justify-center text-xs text-neutral-400 overflow-hidden relative">
+                       <span id="logo-preview-placeholder">Logo</span>
+                       <img id="logo-preview" src="" class="hidden w-full h-full object-contain" />
                     </div>
-                    <div>
-                        <label class="text-xs text-neutral-500">RC Number</label>
-                        <input id="rc_number" class="input-field" type="text" />
+                    <div class="flex-1 space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs text-neutral-500">Brand Name</label>
+                                <input id="brand_name" class="input-field" type="text" />
+                            </div>
+                            <div>
+                                <label class="text-xs text-neutral-500">RC Number</label>
+                                <input id="rc_number" class="input-field" type="text" />
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-4 items-end">
+                             <div>
+                                <label class="text-xs text-neutral-500">Brand Color</label>
+                                <input id="brand_color" type="color" class="w-full h-10 border-0 bg-neutral-100 rounded-md cursor-pointer" value="#000000" />
+                            </div>
+                            <div>
+                                <label class="text-xs text-neutral-500">Accent Color</label>
+                                <input id="accent_color" type="color" class="w-full h-10 border-0 bg-neutral-100 rounded-md cursor-pointer" value="#808080" />
+                            </div>
+                            <div class="file-input-wrapper w-full h-10 bg-black text-white text-sm font-semibold rounded-md flex items-center justify-center relative">
+                                <span id="logo-upload-text">Upload Logo</span>
+                                <div id="logo-loader" class="absolute inset-0 bg-black/80 hidden items-center justify-center"><div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div></div>
+                                <input id="logo" type="file" accept="image/*" />
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div>
@@ -128,111 +251,114 @@
                         <input id="email" class="input-field" type="email" />
                     </div>
                 </div>
-                <div class="grid grid-cols-3 gap-4 items-end">
-                    <div>
-                        <label class="text-xs text-neutral-500">Brand Color</label>
-                        <input id="brand_color" type="color" class="w-full h-10 border-0 bg-neutral-100 rounded-md" value="#000000" />
-                    </div>
-                    <div>
-                        <label class="text-xs text-neutral-500">Accent Color</label>
-                        <input id="accent_color" type="color" class="w-full h-10 border-0 bg-neutral-100 rounded-md" value="#808080" />
-                    </div>
-                    <div class="file-input-wrapper w-full h-10 bg-black text-white text-sm font-semibold rounded-md flex items-center justify-center">
-                        <span>Upload Logo</span>
-                        <input id="logo" type="file" accept="image/*" />
-                    </div>
-                </div>
             </div>
         </details>
 
         <details>
-            <summary class="text-lg font-semibold cursor-pointer py-4 border-b">Client Details</summary>
-            <div class="pt-4 space-y-4">
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="text-xs text-neutral-500">Invoice Number</label>
-                        <input id="invoice_number" class="input-field" />
-                    </div>
-                    <div>
-                        <label class="text-xs text-neutral-500">Date</label>
-                        <input id="date" class="input-field" type="date" />
-                    </div>
-                </div>
-                <div>
-                    <label class="text-xs text-neutral-500">Client Name</label>
-                    <input id="client_name" class="input-field" />
-                </div>
-                <div>
-                    <label class="text-xs text-neutral-500">Invoice Title</label>
-                    <input id="invoice_title" class="input-field" />
-                </div>
+          <summary class="text-lg font-semibold cursor-pointer py-4 border-b">Client Details</summary>
+          <div class="pt-4 space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="text-xs text-neutral-500">Invoice Number</label>
+                <input id="invoice_number" class="input-field" />
+              </div>
+              <div>
+                <label class="text-xs text-neutral-500">Date</label>
+                <input id="date" class="input-field" type="date" />
+              </div>
             </div>
+            <div>
+              <label class="text-xs text-neutral-500">Client Name</label>
+              <input id="client_name" class="input-field" />
+            </div>
+            <div>
+              <label class="text-xs text-neutral-500">Invoice Title</label>
+              <input id="invoice_title" class="input-field" />
+            </div>
+          </div>
         </details>
 
         <details>
-            <summary class="text-lg font-semibold cursor-pointer py-4 border-b">Payment Details</summary>
-            <div class="pt-4 space-y-4">
-                <div>
-                    <label class="text-xs text-neutral-500">Payee Name</label>
-                    <input id="payee_name" class="input-field" placeholder="e.g. Zatras Global Services Ltd" />
-                </div>
-                <div>
-                    <label class="text-xs text-neutral-500">Account Number</label>
-                    <input id="account_number" class="input-field" placeholder="e.g. 0123456789" />
-                </div>
-                <div>
-                    <label class="text-xs text-neutral-500">Bank Name</label>
-                    <input id="bank_name" class="input-field" placeholder="e.g. Access Bank" />
-                </div>
+          <summary class="text-lg font-semibold cursor-pointer py-4 border-b">Payment Details</summary>
+          <div class="pt-4 space-y-4">
+            <div>
+              <label class="text-xs text-neutral-500">Payee Name</label>
+              <input id="payee_name" class="input-field" placeholder="e.g. Zatras Global Services Ltd" />
             </div>
+            <div>
+              <label class="text-xs text-neutral-500">Account Number</label>
+              <input id="account_number" class="input-field" placeholder="e.g. 0123456789" />
+            </div>
+            <div>
+              <label class="text-xs text-neutral-500">Bank Name</label>
+              <input id="bank_name" class="input-field" placeholder="e.g. Access Bank" />
+            </div>
+          </div>
         </details>
 
-        <details >
-            <summary class="text-lg font-semibold cursor-pointer py-4 border-b">Invoice Items Details</summary>
-        <section>
-            
+        <details>
+          <summary class="text-lg font-semibold cursor-pointer py-4 border-b">Invoice Items Details</summary>
+          <section class="pt-4">
             <table id="items_table" class="w-full text-sm">
-                <thead>
-                    <tr class="text-neutral-500 text-xs border-b">
-                        <th class="text-left font-medium py-2 w-full">Description</th>
-                        <th class="font-medium px-2">Qty</th>
-                        <th class="font-medium px-2">Price</th>
-                        <th class="text-right font-medium py-2">Total</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
+              <thead>
+                <tr class="text-neutral-500 text-xs border-b">
+                  <th class="text-left font-medium py-2 w-full">Description</th>
+                  <th class="font-medium px-2">Qty</th>
+                  <th class="font-medium px-2">Price</th>
+                  <th class="text-right font-medium py-2">Total</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody></tbody>
             </table>
             <button onclick="addRow()" class="mt-4 w-full bg-neutral-100 hover:bg-neutral-200 py-2.5 rounded-md text-sm font-semibold transition-colors">Add Item</button>
-        </section>
+          </section>
         </details>
+
         <section class="bg-neutral-50 p-4 rounded-lg">
-            <div class="space-y-3 text-sm">
-                <div class="flex justify-between">
-                    <span class="text-neutral-600">Subtotal</span>
-                    <span id="subtotal" class="font-medium">₦0.00</span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-neutral-600">VAT (7.5%)</span>
-                    <span id="vat_amount" class="font-medium">₦0.00</span>
-                </div>
-                 <div class="flex justify-between items-center text-xl font-bold border-t border-neutral-200 pt-3 mt-3">
-                    <span>Total Due</span>
-                    <span id="total_due">₦0.00</span>
-                </div>
+          <div class="space-y-3 text-sm">
+            <div class="flex justify-between">
+              <span class="text-neutral-600">Subtotal</span>
+              <span id="subtotal" class="font-medium">₦0.00</span>
             </div>
-              <button onclick="downloadPDF()" class="mt-6 w-full bg-black hover:bg-neutral-800 text-white py-3 rounded-md font-semibold transition-colors">Download PDF</button>
+            <div class="flex justify-between">
+              <span class="text-neutral-600">VAT (7.5%)</span>
+              <span id="vat_amount" class="font-medium">₦0.00</span>
+            </div>
+            <div class="flex justify-between items-center text-xl font-bold border-t border-neutral-200 pt-3 mt-3">
+              <span>Total Due</span>
+              <span id="total_due">₦0.00</span>
+            </div>
+          </div>
+          <button id="pdf-download-btn" class="mt-6 w-full bg-black hover:bg-neutral-800 text-white py-3 rounded-md font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
+             <span id="pdf-btn-text">Download PDF</span>
+          </button>
         </section>
       </div>
     </div>
+    
+    <!-- Resizer Handle -->
+    <div id="resize-handle" class="resize-handle"></div>
 
-    <div class="flex-1 bg-neutral-100 flex justify-center items-start p-4 lg:p-8">
-      <iframe id="preview" class="w-full max-w-4xl h-full bg-white rounded-xl shadow-lg border border-neutral-200"></iframe>
+    <!-- Preview Pane -->
+    <div id="preview-container" class="flex-1 bg-neutral-100 flex flex-col justify-center items-start p-4 lg:p-8">
+        <header class="w-full max-w-4xl mx-auto mb-2 flex justify-end">
+            <button id="preview-fullscreen-btn" title="Toggle Preview Fullscreen" class="text-neutral-500 hover:text-black">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+            </button>
+        </header>
+        <div class="w-full max-w-4xl h-full mx-auto relative">
+             <iframe id="preview" class="w-full h-full bg-white rounded-xl shadow-lg border border-neutral-200"></iframe>
+             <div id="preview-loader" class="loader-overlay active rounded-xl"><div class="spinner"></div></div>
+        </div>
     </div>
   </div>
-  
+
+  <div id="notification-container"></div>
+  <div id="app-loader" class="loader-overlay active"><div class="spinner"></div></div>
+
   <script>
-    const STORAGE_KEY = "invoice_data_v4";
+    const STORAGE_KEY = "invoice_data_v5";
     const previewFrame = document.getElementById("preview");
     const saveStatus = document.getElementById("save-status");
     document.getElementById("date").valueAsDate = new Date();
@@ -243,7 +369,7 @@
         address: "123 Innovation Drive, Business District, Abuja, Nigeria",
         phone: "+234 801 234 5678",
         email: "contact@innovatesolutions.com",
-        invoice_number: "INV-001",
+        invoice_number: `INV-${new Date().getFullYear()}-001`,
         client_name: "Global Tech Ltd.",
         invoice_title: "Q3 Web Development Services",
         payee_name: "Innovate Solutions Inc.",
@@ -257,22 +383,30 @@
     };
 
     function populateWithSampleData() {
-        Object.entries(sampleData).forEach(([key, val]) => {
-            const el = document.getElementById(key);
-            if (el && key !== 'items') {
-                el.value = val;
-            }
-        });
-        if (sampleData.items) {
-            restoreItems(sampleData.items);
-        }
+      Object.entries(sampleData).forEach(([key, val]) => {
+        const el = document.getElementById(key);
+        if (el && key !== 'items') el.value = val;
+      });
+      if (sampleData.items) restoreItems(sampleData.items);
+    }
+    
+    function showNotification(message, type = 'info') {
+        const container = document.getElementById('notification-container');
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.textContent = message;
+        container.appendChild(notification);
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.3s forwards';
+            notification.addEventListener('animationend', () => notification.remove());
+        }, 3000);
     }
 
     function loadSavedData() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (!saved) {
         populateWithSampleData();
-        return false; // Indicates no saved data was found
+        return;
       }
       const data = JSON.parse(saved);
       Object.entries(data).forEach(([key, val]) => {
@@ -280,24 +414,27 @@
         if (el) el.value = val;
       });
       if (data.items) restoreItems(data.items);
-      return true; // Indicates saved data was found and loaded
+      
+      const logoUrl = localStorage.getItem('logo_url');
+      if (logoUrl) {
+          document.getElementById('logo-preview').src = logoUrl;
+          document.getElementById('logo-preview').classList.remove('hidden');
+          document.getElementById('logo-preview-placeholder').classList.add('hidden');
+      }
     }
 
-
-    
     function createRowHTML(item = {}) {
-        const desc = item.description || "";
-        const qty = item.quantity || 1;
-        const price = item.unit_price || 0;
-        const total = (item.total || 0).toFixed(2);
-        
-        return `
-            <td class="pt-2 w-full"><input type="text" value="${desc}" placeholder="Item description" class="input-field" /></td>
-            <td class="pt-2"><input type="number" value="${qty}" class="input-field w-16 text-center" /></td>
-            <td class="pt-2"><input type="number" value="${price}" class="input-field w-24 text-center" /></td>
-            <td class="total text-right pt-2 pr-2 font-medium">${total}</td>
-            <td class="actions-cell text-center pt-2"><button class="text-neutral-400 hover:text-red-500 text-lg" onclick="removeRow(this)">✕</button></td>
-        `;
+      const desc = item.description || "";
+      const qty = item.quantity || 1;
+      const price = item.unit_price || 0;
+      const total = (item.total || 0).toFixed(2);
+      return `
+        <td class="pt-2 w-full"><input type="text" value="${desc}" placeholder="Item description" class="input-field" /></td>
+        <td class="pt-2"><input type="number" value="${qty}" class="input-field w-16 text-center" /></td>
+        <td class="pt-2"><input type="number" value="${price}" class="input-field w-24 text-center" /></td>
+        <td class="total text-right pt-2 pr-2 font-medium">${total}</td>
+        <td class="actions-cell text-center pt-2"><button class="text-neutral-400 hover:text-red-500 text-lg" onclick="removeRow(this)">✕</button></td>
+      `;
     }
 
     function restoreItems(items) {
@@ -314,7 +451,7 @@
       clearTimeout(saveTimer);
       saveStatus.textContent = "Saving...";
       saveTimer = setTimeout(() => {
-        const data = collectData();
+        const data = collectData('preview'); // Collect with preview context for saving
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
         saveStatus.textContent = "Saved";
       }, 500);
@@ -346,7 +483,7 @@
       return { subtotal, vat_amount: vat, total_due: total };
     }
 
-    function collectData(context = 'pdf') { // Default context is 'pdf'
+    function collectData(context = 'pdf') {
       const inputs = Array.from(document.querySelectorAll("#editor-panel input, #editor-panel textarea"));
       const data = {};
       inputs.forEach((el) => {
@@ -366,64 +503,57 @@
       });
 
       const totals = calculateTotals(items);
-      
-      // *** MODIFICATION START ***
-      // Determine which logo URL to use based on the context (preview or pdf)
-      const logoKey = context === 'preview' ? 'logo_url' : 'pdf_logo_url';
-      const logoUrl = localStorage.getItem(logoKey);
-      // *** MODIFICATION END ***
-
-      // The original logic used the same URL for both brand logo and watermark.
-      // We will maintain that structure, but use the contextually-correct URL.
+      const logoUrl = localStorage.getItem('logo_url');
       return { ...data, items, ...totals, brand_logo_url: logoUrl, watermark_url: logoUrl };
     }
-
-
+    
+    const previewLoader = document.getElementById('preview-loader');
     let previewTimer;
     function updatePreview() {
       saveToLocal();
       clearTimeout(previewTimer);
+      previewLoader.classList.add('active');
       previewTimer = setTimeout(async () => {
-        // *** MODIFICATION *** Pass 'preview' context
-        const data = collectData('preview'); 
+        const data = collectData('preview');
         try {
-            const res = await fetch("/render_invoice", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data),
-            });
-            if (!res.ok) throw new Error('Preview generation failed');
-            const { html } = await res.json();
-            previewFrame.srcdoc = html;
+          const res = await fetch("/render_invoice", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(data),
+          });
+          if (!res.ok) throw new Error('Preview generation failed');
+          const { html } = await res.json();
+          previewFrame.srcdoc = html;
         } catch (error) {
-            console.warn("Could not render preview (backend not running?). Using fallback message.");
-            previewFrame.srcdoc = `<div style="padding:2rem; font-family:sans-serif; text-align:center;"><h2>Preview Unavailable</h2><p>Could not connect to the backend server to render the invoice preview.</p></div>`;
+          console.warn("Could not render preview (backend not running?). Using fallback message.");
+          previewFrame.srcdoc = `<div style="padding:2rem; font-family:sans-serif; text-align:center;"><h2>Preview Unavailable</h2><p>Could not connect to the backend server to render the invoice preview.</p></div>`;
+        } finally {
+            previewLoader.classList.remove('active');
         }
       }, 500);
     }
     
     document.addEventListener("DOMContentLoaded", () => {
-        // Consolidated event listener for all inputs using delegation
-        document.getElementById('editor-panel').addEventListener('input', (e) => {
-            if (e.target.matches('input, textarea')) {
-                updatePreview();
-            }
-        });
-        
-        loadSavedData();
-        updatePreview();
-        if(!document.querySelector("#items_table tbody tr")) {
-            addRow();
+      document.getElementById('editor-panel').addEventListener('input', (e) => {
+        if (e.target.matches('input, textarea')) {
+          updatePreview();
         }
+      });
+      loadSavedData();
+      updatePreview();
+      if (!document.querySelector("#items_table tbody tr")) {
+        addRow();
+      }
+      document.getElementById('app-loader').classList.remove('active');
     });
 
-    async function downloadPDF() {
-        // *** MODIFICATION *** Pass 'pdf' context for clarity, though it's the default
-        const data = collectData('pdf'); 
-        const button = document.querySelector("button[onclick='downloadPDF()']");
-        const originalText = button.textContent;
-        button.textContent = 'Generating...';
-        button.disabled = true;
+    const pdfBtn = document.getElementById('pdf-download-btn');
+    const pdfBtnText = document.getElementById('pdf-btn-text');
+
+    pdfBtn.addEventListener('click', async () => {
+        const data = collectData('pdf');
+        pdfBtnText.textContent = 'Generating...';
+        pdfBtn.disabled = true;
 
         try {
             const res = await fetch("/generate_pdf", {
@@ -432,7 +562,10 @@
                 body: JSON.stringify(data),
             });
 
-            if (!res.ok) throw new Error('PDF generation failed. Check your server logs.');
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({ detail: 'PDF generation failed. Check server logs.' }));
+                throw new Error(errorData.detail || 'PDF generation failed.');
+            }
             
             const blob = await res.blob();
             const url = window.URL.createObjectURL(blob);
@@ -443,74 +576,129 @@
             a.click();
             a.remove();
             window.URL.revokeObjectURL(url);
+            showNotification('PDF downloaded successfully!', 'success');
 
         } catch (error) {
-            alert(error.message);
+            showNotification(error.message, 'error');
+            console.error(error);
         } finally {
-            button.textContent = originalText;
-            button.disabled = false;
+            pdfBtnText.textContent = 'Download PDF';
+            pdfBtn.disabled = false;
         }
-    }
+    });
 
     const logoInput = document.getElementById("logo");
+    const logoLoader = document.getElementById("logo-loader");
     logoInput.addEventListener("change", (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+        const file = e.target.files[0];
+        if (!file) return;
 
-    // Create a new FileReader instance
-    const reader = new FileReader();
-
-    // Define what happens when the file is successfully read
-    reader.onload = () => {
-        // The result is the Base64 encoded string
-        const base64String = reader.result;
-
-        // Store the Base64 string in localStorage for both web and PDF use
-        localStorage.setItem("logo_url", base64String);
-        localStorage.setItem("pdf_logo_url", base64String);
-
-        // Update the preview with the new logo
-        updatePreview();
-    };
-
-    // Define what happens if there's an error reading the file
-    reader.onerror = (error) => {
-        console.error("Error: ", error);
-        alert("Error converting logo.");
-    };
-
-    // Start the process of reading the file as a Data URL (Base64)
-    reader.readAsDataURL(file);
-});
-    // Event delegation for item row focus effect
-    const itemsTbody = document.querySelector("#items_table tbody");
-
-    itemsTbody.addEventListener('focusin', (e) => {
-        if (e.target.matches('input')) {
-            const tr = e.target.closest('tr');
-            // First, remove 'is-focused' from any other cell in the same row
-            tr.querySelectorAll('.is-focused').forEach(cell => cell.classList.remove('is-focused'));
+        if (file.size > 102400) { // 100 KB limit
+            showNotification('Logo size must be under 100 KB.', 'error');
+            logoInput.value = ''; // Reset file input
+            return;
+        }
+        
+        logoLoader.style.display = 'flex';
+        const reader = new FileReader();
+        reader.onload = () => {
+            const base64String = reader.result;
+            localStorage.setItem("logo_url", base64String);
             
-            const td = e.target.closest('td');
-            tr.classList.add('is-editing');
-            td.classList.add('is-focused');
+            const logoPreview = document.getElementById('logo-preview');
+            logoPreview.src = base64String;
+            logoPreview.classList.remove('hidden');
+            document.getElementById('logo-preview-placeholder').classList.add('hidden');
+
+            updatePreview();
+            showNotification('Logo uploaded successfully!', 'success');
+            logoLoader.style.display = 'none';
+        };
+        reader.onerror = (error) => {
+            console.error("Error reading file: ", error);
+            showNotification('Error converting logo.', 'error');
+            logoLoader.style.display = 'none';
+        };
+        reader.readAsDataURL(file);
+    });
+
+    const itemsTbody = document.querySelector("#items_table tbody");
+    itemsTbody.addEventListener('focusin', (e) => {
+      if (e.target.matches('input')) {
+        const tr = e.target.closest('tr');
+        tr.querySelectorAll('.is-focused').forEach(cell => cell.classList.remove('is-focused'));
+        const td = e.target.closest('td');
+        tr.classList.add('is-editing');
+        td.classList.add('is-focused');
+      }
+    });
+    itemsTbody.addEventListener('focusout', (e) => {
+      if (e.target.matches('input')) {
+        const tr = e.target.closest('tr');
+        setTimeout(() => {
+          if (!tr.contains(document.activeElement)) {
+            tr.classList.remove('is-editing');
+            tr.querySelectorAll('.is-focused').forEach(cell => cell.classList.remove('is-focused'));
+          }
+        }, 0);
+      }
+    });
+    
+    // --- Resizable Panes Logic ---
+    const editorContainer = document.getElementById('editor-container');
+    const resizeHandle = document.getElementById('resize-handle');
+    let isResizing = false;
+    
+    resizeHandle.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        resizeHandle.classList.add('is-dragging');
+        document.body.style.cursor = 'col-resize';
+        document.body.style.userSelect = 'none';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+        const newWidth = e.clientX;
+        if (newWidth > 350 && newWidth < window.innerWidth - 350) {
+            editorContainer.style.width = `${newWidth}px`;
         }
     });
 
-    itemsTbody.addEventListener('focusout', (e) => {
-        if (e.target.matches('input')) {
-            const tr = e.target.closest('tr');
-            // Use a small delay to allow focus to shift between inputs in the same row
-            setTimeout(() => {
-                // If the new active element is NOT inside this row, collapse the row.
-                if (!tr.contains(document.activeElement)) {
-                    tr.classList.remove('is-editing');
-                    // And remove the focus class from all cells within it
-                    tr.querySelectorAll('.is-focused').forEach(cell => cell.classList.remove('is-focused'));
-                }
-            }, 0);
+    document.addEventListener('mouseup', () => {
+        isResizing = false;
+        resizeHandle.classList.remove('is-dragging');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+    });
+    
+    // --- Fullscreen Logic ---
+    const editorFullscreenBtn = document.getElementById('editor-fullscreen-btn');
+    const previewFullscreenBtn = document.getElementById('preview-fullscreen-btn');
+    const previewContainer = document.getElementById('preview-container');
+
+    editorFullscreenBtn.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+            editorContainer.requestFullscreen();
+        } else {
+            document.exitFullscreen();
         }
     });
+
+    previewFullscreenBtn.addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+            previewContainer.requestFullscreen();
+        } else {
+            document.exitFullscreen();
+        }
+    });
+
+    document.addEventListener('fullscreenchange', () => {
+        if (!document.fullscreenElement) {
+            // Reset styles or states when exiting fullscreen
+        }
+    });
+    
   </script>
 </body>
 </html>
+
