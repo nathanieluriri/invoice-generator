@@ -1,63 +1,19 @@
 import math
 import os
 import time
-import uuid
-from typing import List, Optional
-
+from schemas.invoice import * 
 import pdfkit
-from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse,HTMLResponse
-from fastapi.staticfiles import StaticFiles
+from repositories.tokens_repo import get_access_tokens_no_date_check
 from jinja2 import Environment, FileSystemLoader
-from limits import parse
+from limits import parse_many,parse
 from limits.storage import RedisStorage
 from limits.strategies import FixedWindowRateLimiter
-from pydantic import BaseModel, Field
 from starlette.middleware.base import BaseHTTPMiddleware
 
-# --- Pydantic Models for Data Validation ---
-# By using Pydantic, FastAPI will automatically validate incoming request data.
-# This prevents malformed data from causing runtime errors.
 
-
-class InvoiceItem(BaseModel):
-    description: str = "Item Description"
-    quantity: float = 1
-    unit_price: float = Field(0, alias="unit_price")
-    total: float = 0
-
-
-class InvoiceData(BaseModel):
-    # Brand Details
-    brand_name: Optional[str] = "Your Brand Name"
-    brand_logo_url: Optional[str] = ""
-    brand_color: Optional[str] = "#000000"
-    accent_color: Optional[str] = "#808080"
-    rc_number: Optional[str] = ""
-    address: Optional[str] = ""
-    phone: Optional[str] = ""
-    email: Optional[str] = ""
-
-    # Client & Invoice Details
-    invoice_number: Optional[str] = "INV-001"
-    date: Optional[str] = ""
-    client_name: Optional[str] = "Client Name"
-    invoice_title: Optional[str] = "Invoice Title"
-
-    # Payment Details
-    payee_name: Optional[str] = ""
-    account_number: Optional[str] = ""
-    bank_name: Optional[str] = ""
-
-    # Items and Totals
-    items: List[InvoiceItem] = []
-    subtotal: Optional[float] = 0
-    vat_rate: Optional[float] = 7.5
-    vat_amount: Optional[float] = 0
-    total_due: Optional[float] = 0
-    total_in_words: Optional[str] = "ZERO NAIRA ONLY"
-    watermark_url: Optional[str] = ""
 
 
 # --- Application Setup ---
@@ -75,11 +31,7 @@ if not os.path.exists(WKHTMLTOPDF_PATH):
 else:
     config = pdfkit.configuration(wkhtmltopdf=WKHTMLTOPDF_PATH)
 
-UPLOAD_DIR = "static/uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# Mount static files to serve images
-app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Jinja2 template environment
 templates = Environment(loader=FileSystemLoader("templates"))
@@ -90,19 +42,8 @@ templates = Environment(loader=FileSystemLoader("templates"))
 # are assumed to exist and function as in your original code. For this example to be
 # runnable, these would need to be defined or stubbed.
 
-# Stubbing dependencies for demonstration purposes
-class MockAccessToken:
-    def __init__(self, userId, role):
-        self.userId = userId
-        self.role = role
 
-async def get_access_tokens_no_date_check(accessToken: str):
-    # This is a mock. In a real app, you'd verify the token.
-    if accessToken == "admin-token":
-        return MockAccessToken("admin_user_123", "admin")
-    if accessToken == "member-token":
-        return MockAccessToken("member_user_456", "member")
-    return None
+
 
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 
@@ -110,8 +51,8 @@ REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 storage = RedisStorage(f"redis://{REDIS_HOST}:6379/0")
 limiter = FixedWindowRateLimiter(storage)
 RATE_LIMITS = {
-    "annonymous": parse("500/minute"),
-    "member": parse("1000/minute"),
+    "annonymous": parse("1400/day"),
+    "member": parse("2000/day"),
     "admin": parse("1400/minute"),
 }
 import decimal
@@ -248,24 +189,84 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
         seconds_until_reset = max(math.ceil(reset_time - time.time()), 0)
 
         if not allowed:
-            return JSONResponse(
-                status_code=429,
-                headers={
-                    "X-User-Type": user_type, "X-User-Id": user_id,
-                    "X-RateLimit-Limit": str(rate_limit_rule.amount),
-                    "X-RateLimit-Remaining": str(max(remaining, 0)),
-                    "X-RateLimit-Reset": str(seconds_until_reset),
-                    "Retry-After": str(seconds_until_reset),
-                },
-                content={"detail": "Too Many Requests", "retry_after": seconds_until_reset},
-            )
+            html_content = f"""
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Rate Limit Exceeded</title>
+                <style>
+                    body {{
+                        font-family: Arial, sans-serif;
+                        background-color: #f4f4f4;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        height: 100vh;
+                        margin: 0;
+                    }}
+                    .container {{
+                        background-color: white;
+                        padding: 30px;
+                        border-radius: 8px;
+                        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                        text-align: center;
+                        max-width: 600px;
+                        width: 100%;
+                    }}
+                    h1 {{
+                        color: #e74c3c;
+                    }}
+                    p {{
+                        font-size: 18px;
+                        color: #333;
+                    }}
+                    .countdown {{
+                        font-size: 24px;
+                        font-weight: bold;
+                        color: #e74c3c;
+                    }}
+                    .retry-button {{
+                        padding: 10px 20px;
+                        background-color: #3498db;
+                        color: white;
+                        border: none;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        margin-top: 20px;
+                        transition: background-color 0.3s;
+                    }}
+                    .retry-button:hover {{
+                        background-color: #2980b9;
+                    }}
+                </style>
+                <script>
+                    let countdownTime = {seconds_until_reset};
+                    function updateCountdown() {{
+                        if (countdownTime > 0) {{
+                            countdownTime--;
+                            document.getElementById("countdown").textContent = countdownTime + " seconds";
+                        }}
+                    }}
+                    setInterval(updateCountdown, 1000);
+                </script>
+            </head>
+            <body>
+                <div class="container">
+                    <h1>Rate Limit Exceeded</h1>
+                    <p>You've made too many requests in a short period of time.</p>
+                    <p>Please wait before making another request. You can try again in:</p>
+                    <p class="countdown" id="countdown">{seconds_until_reset} seconds</p>
+                    <button class="retry-button" onclick="window.location.reload();">Retry Now</button>
+                </div>
+            </body>
+            </html>
+            """
+            return HTMLResponse(content=html_content, status_code=429)
 
+        # If the request is allowed, continue as usual
         response = await call_next(request)
-        response.headers["X-User-Id"] = user_id
-        response.headers["X-User-Type"] = user_type
-        response.headers["X-RateLimit-Limit"] = str(rate_limit_rule.amount)
-        response.headers["X-RateLimit-Remaining"] = str(max(remaining, 0))
-        response.headers["X-RateLimit-Reset"] = str(seconds_until_reset)
         return response
 
 app.add_middleware(RateLimitingMiddleware)
@@ -320,32 +321,6 @@ async def render_invoice(data: InvoiceData):
     return JSONResponse({"html": html})
 
 
-@app.post("/upload_image")
-async def upload_image(request: Request, file: UploadFile = File(...)):
-    """Handles image uploads, saving them with unique names."""
-    # IMPROVEMENT: Generate a unique filename to prevent overwrites.
-    file_extension = os.path.splitext(file.filename)[1]
-    unique_filename = f"{uuid.uuid4()}{file_extension}"
-    file_path = os.path.join(UPLOAD_DIR, unique_filename)
-
-    try:
-        with open(file_path, "wb") as buffer:
-            buffer.write(await file.read())
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Could not save file: {e}")
-
-    # URL for browser preview (e.g., http://.../static/uploads/file.jpg)
-    base_url = str(request.base_url).rstrip("/")
-    public_url = f"{base_url}/static/uploads/{unique_filename}"
-
-    # Absolute file path for pdfkit (e.g., file:///C:/.../static/uploads/file.jpg)
-    abs_path = os.path.abspath(file_path).replace("\\", "/")
-    file_url_for_pdf = f"file:///{abs_path}"
-
-    return {
-        "url": public_url,      # For browser/preview use
-        "pdf_url": file_url_for_pdf  # For pdfkit backend use
-    }
 
 @app.post("/generate_pdf")
 async def generate_pdf(data: InvoiceData):
