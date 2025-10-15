@@ -593,8 +593,8 @@
         const file = e.target.files[0];
         if (!file) return;
 
-        if (file.size > 102400) { // 100 KB limit
-            showNotification('Logo size must be under 100 KB.', 'error');
+        if (file.size > 2560000) { // 100 KB limit
+            showNotification('Logo size must be under 2.5 MB.', 'error');
             logoInput.value = ''; // Reset file input
             return;
         }
