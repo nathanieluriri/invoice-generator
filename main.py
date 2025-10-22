@@ -310,6 +310,9 @@ async def editor_page(request: Request):
     template = templates.get_template('editor.html')
     return HTMLResponse(template.render({"request": request}))
 
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
 
 @app.post("/render_invoice")
 async def render_invoice(data: InvoiceData):

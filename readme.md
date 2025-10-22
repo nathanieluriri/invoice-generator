@@ -71,9 +71,11 @@ A powerful and simple API built with FastAPI to generate professional PDF invoic
 ├── requirements.txt      \# Python dependencies
 ├── static/               \# For serving static files like logos
 │   └── uploads/
-└── templates/            \# Jinja2 HTML templates
-├── editor.html
-└── invoice\_template.html
+├── templates/            \# Jinja2 HTML templates
+│   └──├── editor.html
+│      ├── invoice_template.html
+│      ├── invoice_template1.html
+            
 
 ````
 
